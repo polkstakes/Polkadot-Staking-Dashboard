@@ -1,0 +1,31 @@
+{
+  "version": "ee665197",
+  "entry": {
+    "module": "/build/entry.client-IYO67JW2.js",
+    "imports": [
+      "/build/_shared/chunk-WKCCDAH5.js"
+    ]
+  },
+  "routes": {
+    "root": {
+      "id": "root",
+      "path": "",
+      "module": "/build/root-SK2IKSAI.js",
+      "hasAction": false,
+      "hasLoader": false,
+      "hasCatchBoundary": true,
+      "hasErrorBoundary": true
+    },
+    "routes/index": {
+      "id": "routes/index",
+      "parentId": "root",
+      "index": true,
+      "module": "/build/routes/index-DERRPJ3K.js",
+      "hasAction": false,
+      "hasLoader": true,
+      "hasCatchBoundary": false,
+      "hasErrorBoundary": false
+    }
+  },
+  "url": "/build/manifest-EE665197.js"
+}

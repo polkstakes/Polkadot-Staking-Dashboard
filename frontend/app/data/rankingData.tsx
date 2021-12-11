@@ -1,0 +1,309 @@
+import { ApiPromise } from "@polkadot/api";
+import { WsProvider } from "@polkadot/rpc-provider";
+import { GraphQLClient } from "graphql-request";
+import { getValidatorsWithIdentity } from "./handlers/identity";
+import { accountQuery } from "./handlers/query";
+import { BigNumber } from "bignumber.js";
+import {
+  getClusterInfo,
+  getCommissionHistory,
+  getCommissionRating,
+  getPayoutRating,
+  parseIdentity,
+} from "./handlers/utils";
+import {
+  GetCouncilVotes,
+  GetEraPoints,
+  GetEraPreferences,
+  GetEraSalashes,
+  GetMaxNominatorRewardedPerValidator,
+  GetNomination,
+  GetProposals,
+  GetReferendums,
+  GetValidatorAddresses,
+} from "./queries";
+
+const provider = new WsProvider("wss://polkadot.api.onfinality.io/public-ws");
+
+const stakingQueryFlags = {
+  withDestination: false,
+  withExposure: true,
+  withLedger: true,
+  withNominations: false,
+  withPrefs: true,
+};
+
+type ValidatorInfo = {
+  id: string;
+};
+
+export async function getRankingData() {
+  const api = await ApiPromise.create({ provider });
+  const subquery = new GraphQLClient(
+    "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
+  );
+  const { validatorsInfos } = await subquery.request(GetValidatorAddresses);
+  const validatorsInfo = await Promise.all(
+    validatorsInfos.nodes.map(async (authority: ValidatorInfo) => {
+      const accountInfo = await accountQuery(
+        authority.id,
+        stakingQueryFlags,
+        api
+      );
+      const identity = await getValidatorsWithIdentity(api, [authority.id]);
+      return {
+        ...accountInfo,
+        identity,
+        active: true,
+      };
+    })
+  );
+
+  const { referendums } = await subquery.request(GetReferendums);
+  const { nominations } = await subquery.request(GetNomination);
+  const { proposals } = await subquery.request(GetProposals);
+  const { councilVotes } = await subquery.request(GetCouncilVotes);
+  const { eraSlashes } = await subquery.request(GetEraSalashes);
+  const { eraPreferences } = await subquery.request(GetEraPreferences);
+  const { eraPoints } = await subquery.request(GetEraPoints);
+  const { maxNominatorRewardedPerValidator } = await subquery.request(
+    GetMaxNominatorRewardedPerValidator
+  );
+
+  const participateInGovernance: any = [];
+  // @ts-expect-error
+  proposals.nodes.forEach(({ seconds, proposer }) => {
+    participateInGovernance.push(proposer.toString());
+    // @ts-expect-error
+    seconds.forEach((accountId) =>
+      participateInGovernance.push(accountId.toString())
+    );
+  });
+  // @ts-expect-error
+  referendums.nodes.forEach(({ votes }) => {
+    // @ts-expect-error
+    votes.forEach(({ accountId }) =>
+      participateInGovernance.push(accountId.toString())
+    );
+  });
+
+  const clusters: any = [];
+
+  const rankingData = validatorsInfo.map((validator: any) => {
+    const { active } = validator;
+    const activeRating = active ? 2 : 0;
+    const stashAddress = validator.stashId.toString();
+    const controllerAddress = validator.controllerId.toString();
+    const {
+      verifiedIdentity,
+      hasSubIdentity,
+      name,
+      identityRating = 0,
+    } = parseIdentity(validator.identity);
+    const identity = JSON.parse(JSON.stringify(validator.identity));
+    const { clusterMembers, clusterName } = getClusterInfo(
+      hasSubIdentity,
+      validatorsInfo,
+      validator.identity
+    );
+    if (clusterName && !clusters.includes(clusterName)) {
+      clusters.push(clusterName);
+    }
+    const partOfCluster = clusterMembers > 1;
+    const subAccountsRating = hasSubIdentity ? 2 : 0;
+    const nominators = active
+      ? validator.exposure.others
+      : nominations.nodes.filter((nomination: { targets: [string] }) =>
+          nomination.targets.some(
+            // @ts-ignore
+            (target) => target === validator.accountId.toString()
+          )
+        ).length;
+    console.log(
+      maxNominatorRewardedPerValidator.maxNominatorRewardedPerValidator
+    );
+    const nominatorsRating =
+      nominators > 0 &&
+      nominators <=
+        maxNominatorRewardedPerValidator.maxNominatorRewardedPerValidator.toNumber()
+        ? 2
+        : 0;
+    const slashes =
+      eraSlashes.nodes.filter(
+        // @ts-ignore
+        ({ validators }) => {
+          const parsedValidators = JSON.parse(validators);
+          return parsedValidators[validator.accountId.toString()];
+        }
+      ) || [];
+
+    const slashed = slashes.length > 0;
+    const slashRating = slashed ? 0 : 2;
+
+    const commission =
+      parseInt(validator.validatorPrefs.commission.toString(), 10) / 10000000;
+
+    const commissionHistory = getCommissionHistory(
+      validator.accountId,
+      eraPreferences.nodes.map((pref: any) => {
+        return {
+          ...pref,
+          validators: JSON.parse(pref.validators),
+        };
+      })
+    );
+
+    const commissionRating = getCommissionRating(commission, commissionHistory);
+
+    const eraPointsHistory: any = [];
+    const payoutHistory: any = [];
+    const stakeHistory: any = [];
+    let activeEras = 0;
+    let performance = 0;
+    // eslint-disable-next-line
+    eraPoints.nodes.forEach((eraPoints: any) => {
+      const { id } = eraPoints;
+      let eraPayoutState = "inactive";
+      let eraPerformance = 0;
+      if (eraPoints.validators[stashAddress]) {
+        activeEras += 1;
+        const points = parseInt(
+          eraPoints.validators[stashAddress].toString(),
+          10
+        );
+        eraPointsHistory.push({
+          era: new BigNumber(id.toString()).toString(10),
+          points,
+        });
+        if (validator.stakingLedger.claimedRewards.includes(id)) {
+          eraPayoutState = "paid";
+        } else {
+          eraPayoutState = "pending";
+        }
+      } else {
+        // validator was not active in that era
+        eraPointsHistory.push({
+          era: new BigNumber(id.toString()).toString(10),
+          points: 0,
+        });
+        stakeHistory.push({
+          era: new BigNumber(id.toString()).toString(10),
+          self: 0,
+          others: 0,
+          total: 0,
+        });
+      }
+      payoutHistory.push({
+        era: new BigNumber(id.toString()).toString(10),
+        status: eraPayoutState,
+      });
+      // total performance
+      performance += eraPerformance;
+    });
+
+    const eraPointsHistoryValidator = eraPointsHistory.reduce(
+      // @ts-ignore
+      (total, era) => total + era.points,
+      0
+    );
+    const eraPointsHistoryTotals: any = [];
+    eraPoints.nodes.forEach(({ eraPoints }: any) => {
+      eraPointsHistoryTotals.push(parseInt(eraPoints.toString(), 10));
+    });
+    const eraPointsHistoryTotalsSum = eraPointsHistoryTotals.reduce(
+      // @ts-expect-error
+      (total, num) => total + num,
+      0
+    );
+    const numActiveValidators = validatorsInfo.length;
+
+    const eraPointsAverage = eraPointsHistoryTotalsSum / numActiveValidators;
+
+    const eraPointsPercent =
+      (eraPointsHistoryValidator * 100) / eraPointsHistoryTotalsSum;
+    const eraPointsRating =
+      eraPointsHistoryValidator > eraPointsAverage ? 2 : 0;
+    const payoutRating = getPayoutRating(payoutHistory);
+
+    const councilBacking = validator.identity?.parent
+      ? councilVotes.nodes.some(
+          // @ts-ignore
+          (vote) => vote.id.toString() === validator.accountId.toString()
+        ) ||
+        councilVotes.nodes.some(
+          // @ts-ignore
+          (vote) => vote.id.toString() === validator.identity.parent.toString()
+        )
+      : councilVotes.nodes.some(
+          // @ts-ignore
+          (vote) => vote.id.toString() === validator.accountId.toString()
+        );
+    const activeInGovernance = validator.identity?.parent
+      ? participateInGovernance.includes(validator.accountId.toString()) ||
+        participateInGovernance.includes(validator.identity.parent.toString())
+      : participateInGovernance.includes(validator.accountId.toString());
+    let governanceRating = 0;
+    if (councilBacking && activeInGovernance) {
+      governanceRating = 3;
+    } else if (councilBacking || activeInGovernance) {
+      governanceRating = 2;
+    }
+    const selfStake = active
+      ? new BigNumber(validator.exposure.own.toString())
+      : new BigNumber(validator.stakingLedger.total.toString());
+    const totalStake = active
+      ? new BigNumber(validator.exposure.total.toString())
+      : selfStake;
+    const otherStake = active ? totalStake.minus(selfStake) : new BigNumber(0);
+    const showClusterMember = true;
+    const totalRating =
+      activeRating +
+      identityRating +
+      subAccountsRating +
+      nominatorsRating +
+      commissionRating +
+      slashRating +
+      governanceRating +
+      eraPointsRating +
+      payoutRating;
+
+    return {
+      active,
+      activeRating,
+      name,
+      identity,
+      hasSubIdentity,
+      subAccountsRating,
+      verifiedIdentity,
+      identityRating,
+      stashAddress: stashAddress.toString(),
+      controllerAddress,
+      partOfCluster,
+      clusterName,
+      clusterMembers,
+      showClusterMember,
+      nominators,
+      nominatorsRating,
+      commission,
+      commissionHistory,
+      commissionRating,
+      performance,
+      slashed,
+      slashRating,
+      slashes,
+      councilBacking,
+      activeInGovernance,
+      governanceRating,
+      selfStake,
+      otherStake,
+      totalStake,
+      totalRating,
+      activeEras,
+      eraPointsPercent,
+    };
+  });
+
+  return {
+    rankingData,
+  };
+}
