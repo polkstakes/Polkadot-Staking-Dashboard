@@ -130,3 +130,22 @@ export const GetReferendums = gql`
     }
   }
 `;
+
+export const GetStakingRewards = gql`
+  query GetStakingRewards($after: Cursor) {
+    stakingRewards(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        account {
+          id
+        }
+        balance
+        date
+      }
+    }
+  }
+`;

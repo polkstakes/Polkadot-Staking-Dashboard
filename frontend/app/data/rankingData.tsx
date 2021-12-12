@@ -20,6 +20,7 @@ import {
   GetNomination,
   GetProposals,
   GetReferendums,
+  GetStakingRewards,
   GetValidatorAddresses,
 } from "./queries";
 import { RankingData } from "./types";
@@ -51,17 +52,20 @@ export async function fetchAll(query: RequestDocument, key: string) {
     hasNext = gqlData[key].pageInfo.hasNextPage;
     cursor = gqlData[key].pageInfo.endCursor;
   }
-  console.log(data);
-  return data
+  return data;
 }
 
 export async function getRankingData(): Promise<RankingData[]> {
   const api = await ApiPromise.create({ provider });
-  const validatorsInfos = await fetchAll(GetValidatorAddresses, 'validatorsInfos');
+  const validatorsInfos = await api.query.session.validators();;
   const validatorsInfo = await Promise.all(
     validatorsInfos.map(async (authority: any) => {
-      const accountId = authority.id;
-      const accountInfo = await accountQuery(accountId as string, stakingQueryFlags, api);
+      const accountId = authority;
+      const accountInfo = await accountQuery(
+        accountId as string,
+        stakingQueryFlags,
+        api
+      );
       const identity = await getValidatorsWithIdentity(api, [accountId]);
       return {
         ...accountInfo,
@@ -82,6 +86,30 @@ export async function getRankingData(): Promise<RankingData[]> {
   const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
   const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
   const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
+  const stakingRewards = await fetchAll(GetStakingRewards, "stakingRewards");
+
+  const stakingRewardsMap: Record<string, { balance: number; date: string }[]> =
+    stakingRewards.reduce(
+      (
+        acc: Record<string, { balance: number; date: string }[]>,
+        stakingReward: any
+      ) => {
+        const {
+          account: { id },
+          balance,
+          date,
+        } = stakingReward;
+        const data = {
+          balance,
+          date,
+        };
+        return {
+          ...acc,
+          [id]: [...(acc[id] || []), data],
+        };
+      },
+      {}
+    );
 
   const { maxNominatorRewardedPerValidator } = await subquery.request(
     GetMaxNominatorRewardedPerValidator
@@ -130,16 +158,13 @@ export async function getRankingData(): Promise<RankingData[]> {
     const subAccountsRating = hasSubIdentity ? 2 : 0;
     const nominators = active
       ? validator.exposure.others
-      // @ts-expect-error
-      : nominations.filter((nomination: { targets: [string] }) =>
+      : // @ts-expect-error
+        nominations.filter((nomination: { targets: [string] }) =>
           nomination.targets.some(
             // @ts-ignore
             (target) => target === validator.accountId.toString()
           )
         ).length;
-    console.log(
-      maxNominatorRewardedPerValidator.maxNominatorRewardedPerValidator
-    );
     const nominatorsRating =
       nominators > 0 &&
       nominators <=
@@ -272,6 +297,9 @@ export async function getRankingData(): Promise<RankingData[]> {
       : selfStake;
     const otherStake = active ? totalStake.minus(selfStake) : new BigNumber(0);
     const showClusterMember = true;
+    const rewarded = stakingRewardsMap[validator.accountId];
+
+    const rewardedRating = rewarded && rewarded.length > 0 ? 5 : 0;
     const totalRating =
       activeRating +
       identityRating +
@@ -281,7 +309,15 @@ export async function getRankingData(): Promise<RankingData[]> {
       slashRating +
       governanceRating +
       eraPointsRating +
-      payoutRating;
+      payoutRating +
+      rewardedRating;
+
+    
+    const totalRewarded: BigNumber = rewarded && rewarded.length > 0 ? rewarded.reduce((acc, {balance}) => {
+      return BigNumber.sum(acc, new BigNumber(balance))
+    }, new BigNumber(0)) : new BigNumber(0);
+
+    const averageRewarded: BigNumber = rewarded && rewarded.length > 0 ? totalRewarded.dividedBy(rewarded.length) : new BigNumber(0);
 
     return {
       accountId: validator.accountId,
@@ -317,6 +353,8 @@ export async function getRankingData(): Promise<RankingData[]> {
       totalRating,
       activeEras,
       eraPointsPercent,
+      rewarded,
+      averageRewarded,
     };
   });
 

@@ -1,22 +1,36 @@
+
 import { Table, Tag, Space } from "antd";
 import BigNumber from "bignumber.js";
 import { RankingData } from "~/data/types";
 
 const toMDOT = (value: BigNumber) => {
-    return `${value.dividedBy(new BigNumber(10000000000000000)).toFixed(4)}MDOT`
-}
+  console.log(value);
+  return `${new BigNumber(value)
+    .dividedBy(new BigNumber(10000000000000000))
+    .toFixed(4)}MDOT`;
+};
 
-const toDOT = (value: BigNumber) => {
-    return `${value.dividedBy(new BigNumber(10000000000)).toFixed(4)}DOT`
-}
-
+export const toDOT = (value: BigNumber, decimals: number = 4) => {
+  return `${new BigNumber(value)
+    .dividedBy(new BigNumber(10000000000))
+    .toFixed(decimals)}DOT`;
+};
 
 
 const columns = [
   {
+    title: "#",
+    dataIndex: "rank",
+    key: "rank",
+    width: 100,
+    sorter: (a: {rank: number}, b: {rank: number}) => a.rank - b.rank,
+  },
+  {
     title: "Name / Account Id",
     dataIndex: "name",
     key: "name",
+    width: 200,
+    ellipsis: true,
   },
   {
     title: "Commission",
@@ -24,7 +38,7 @@ const columns = [
     key: "commission",
   },
   {
-    title: "Total Rating",
+    title: "Polkstakes Rating",
     dataIndex: "totalRating",
     key: "totalRating",
   },
@@ -34,77 +48,47 @@ const columns = [
     key: "totalStake",
   },
   {
-    title: "Own Stake",
-    dataIndex: "ownStake",
-    key: "ownStake",
-  },
-  {
-    title: "Others Stake",
-    dataIndex: "othersStake",
-    key: "othersStake",
-  },
-  {
-    title: "Active Eras",
-    dataIndex: "activeEras",
-    key: "activeEras",
+    title: "Average Rewarded",
+    dataIndex: "averageRewarded",
+    key: "averegeRewarded",
   },
   {
     title: "Tags",
     key: "tags",
     dataIndex: "tags",
     render: (tags: string[]) => (
-      <>
+      <div>
         {tags.map((tag) => {
-          let color = tag.length > 5 ? "geekblue" : "green";
-          if (tag === "loser") {
-            color = "volcano";
+          let color =  "geekblue";
+          if (tag === "Verified Identity") {
+            color = "green";
+          }
+          if (tag === "Council Backing") {
+            color = "geekblue";
+          }
+          if (tag === "Active In Governance") {
+            color = "vlocano";
+          }
+          if (tag === "Part of cluster") {
+            color = "gold-6";
+          }
+          if (tag === "Slashed") {
+            color = "red-6";
           }
           return (
-            <Tag color={color} key={tag}>
+            <Tag className="table__tag" color={color} key={tag}>
               {tag.toUpperCase()}
             </Tag>
           );
         })}
-      </>
+      </div>
     ),
-  },
-  {
-    title: "Action",
-    key: "action",
-    render: (text: string, record: any) => (
-      <Space size="middle">
-        <a>Delete</a>
-      </Space>
-    ),
-  },
-];
-
-const data = [
-  {
-    key: "1",
-    name: "John Brown",
-    age: 32,
-    address: "New York No. 1 Lake Park",
-    tags: ["nice", "developer"],
-  },
-  {
-    key: "2",
-    name: "Jim Green",
-    age: 42,
-    address: "London No. 1 Lake Park",
-    tags: ["loser"],
-  },
-  {
-    key: "3",
-    name: "Joe Black",
-    age: 32,
-    address: "Sidney No. 1 Lake Park",
-    tags: ["cool", "teacher"],
   },
 ];
 
 interface ValidatorsTableProps {
   rankingData: RankingData[];
+  loading: boolean;
 }
 
 const getTags = (data: RankingData) => {
@@ -129,10 +113,12 @@ const getTags = (data: RankingData) => {
 
 export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
   rankingData = [],
+  loading
 }) => {
-  const tableData = rankingData.map((data) => {
+  const tableData = rankingData.map((data, index) => {
     return {
       key: data.accountId,
+      rank: index + 1,
       name: data.name || data.accountId.toString(),
       commission: `${data.commission.toFixed(2).toString()}%`,
       totalRating: data.totalRating.toString(),
@@ -141,8 +127,9 @@ export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
       ownStake: toDOT(data.selfStake),
       activeEras: data.activeEras,
       tags: getTags(data),
+      averageRewarded: toDOT(data.averageRewarded),
     };
   });
 
-  return <Table columns={columns} dataSource={tableData} />;
+  return <Table  tableLayout="fixed" loading={loading} columns={columns} dataSource={tableData} />;
 };

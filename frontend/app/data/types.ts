@@ -52,4 +52,6 @@ export interface RankingData {
   totalRating: number;
   activeEras: number;
   eraPointsPercent: number;
+  rewarded: { balance: number; date: string }[]
+  averageRewarded: BigNumber;
 }

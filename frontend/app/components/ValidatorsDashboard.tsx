@@ -3,13 +3,20 @@ import { useRankingData } from "~/hooks/useRankingData";
 import { Layout } from "antd";
 import { Content, Header } from "antd/lib/layout/layout";
 import { css, jsx } from "@emotion/react";
-import { ValidatorsTable } from "./ValidatorsTable";
+import { toDOT, ValidatorsTable } from "./ValidatorsTable";
+import BigNumber from "bignumber.js";
 
 const headerStyle = css`
   display: flex;
   alignitems: center;
   justify-content: center;
-  padding: 20px 0px;
+  padding: 30px 0px;
+  h3 {
+    font-weight: normal;
+    color: #080b2d;
+    font-size: 32px;
+    letter-spacing: 1px;
+  }
 `;
 
 const headerTitleStyle = css`
@@ -17,22 +24,97 @@ const headerTitleStyle = css`
 `;
 
 const containerStyle = css`
-  padding: 0 50px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  margin: 0 auto;
+  flex-direction: column;
+  height: 100%;
+  @media (min-width: 1200px) {
+    max-width: 1140px;
+  }
+  padding-bottom: 50px;
+`;
+
+const statsStyle = css`
+  padding: 0 15px;
+  box-shadow: rgb(255 255 255 / 30%) 0px -10px 15px 0px,
+    rgb(0 0 0 / 7%) 0px 30px 60px 0px;
+  margin-bottom: 50px;
+  border-radius: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  padding: 30px 60px;
+  h3 {
+    font-size: 14px;
+    color: rgb(72, 72, 72);
+  }
+  span {
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: #080b2d;
+  }
+  >div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid rgb(210, 210, 210);
+    &:last-child {
+      border: none;
+    }
+  }
 `;
 
 export function ValidatorsDashboard() {
   const { rankingData, loading } = useRankingData();
-  if (loading) {
-    return <div>loading</div>;
-  }
+
+  const avgCommission =
+    rankingData.reduce((acc, curr) => {
+      return acc + curr.commission;
+    }, 0) / rankingData.length;
+
+  const avgRating =
+    rankingData.reduce((acc, curr) => {
+      return acc + curr.totalRating;
+    }, 0) / rankingData.length;
+
+  const avgRewarded =
+    rankingData
+      .reduce((acc, curr) => {
+        return BigNumber.sum(acc, curr.averageRewarded);
+      }, new BigNumber(0))
+      .dividedBy(rankingData.length) || 0;
+
+  const avgRewardedDot = toDOT(avgRewarded, 2);
 
   return (
     <div css={containerStyle}>
-      <div css={headerStyle} className="header">
-        <h3 css={headerTitleStyle}>PolkStakes</h3>
-      </div>
       <div>
-        <ValidatorsTable rankingData={rankingData} />
+        <div css={headerStyle} className="header">
+          <h3 css={headerTitleStyle}><strong>POLKSTAKES</strong> Ranking</h3>
+        </div>
+        <div css={statsStyle}>
+          <div>
+            <h3>Validators</h3>
+            <span>{rankingData.length}</span>
+          </div>
+          <div>
+            <h3>Avg Commission</h3>
+            <span>{avgCommission.toFixed(2)}%</span>
+          </div>
+          <div>
+            <h3>Avg Polkstakes Rating</h3>
+            <span>{avgRating.toFixed(2)}</span>
+          </div>
+          <div>
+            <h3>Avg Rewarded</h3>
+            <span>{avgRewardedDot}</span>
+          </div>
+        </div>
+        <div>
+          <ValidatorsTable loading={loading} rankingData={rankingData} />
+        </div>
       </div>
     </div>
   );

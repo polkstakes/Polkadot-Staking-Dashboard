@@ -2,6 +2,8 @@ import { atom, useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { getRankingData } from "~/data/rankingData";
 import { RankingData } from "~/data/types";
+// @ts-expect-error
+import { data } from './data';
 const rankingDataAtom = atom<RankingData[]>([]);
 
 export function useRankingData() {
@@ -10,7 +12,9 @@ export function useRankingData() {
 
   async function fetchRankingData() {
     setLoading(true);
-    const validatorRankingData = await getRankingData();
+    // const validatorRankingData = await getRankingData();
+    const validatorRankingData = data;
+    console.log(validatorRankingData);
     setRankingData(validatorRankingData);
     setLoading(false);
   }
