@@ -6,22 +6,24 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useCatch
+  useCatch,
 } from "remix";
 import type { LinksFunction } from "remix";
 
 import globalStylesUrl from "~/styles/global.css";
 import darkStylesUrl from "~/styles/dark.css";
+import antdStylesUrl from "antd/dist/antd.css";
 
 // https://remix.run/api/app#links
 export let links: LinksFunction = () => {
   return [
     { rel: "stylesheet", href: globalStylesUrl },
+    { rel: "stylesheet", href: antdStylesUrl },
     {
       rel: "stylesheet",
       href: darkStylesUrl,
-      media: "(prefers-color-scheme: dark)"
-    }
+      media: "(prefers-color-scheme: dark)",
+    },
   ];
 };
 
@@ -95,7 +97,7 @@ export function CatchBoundary() {
 
 function Document({
   children,
-  title
+  title,
 }: {
   children: React.ReactNode;
   title?: string;
@@ -120,10 +122,5 @@ function Document({
 }
 
 function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="app">
-      {children}
-    </div>
-  );
+  return <div className="app">{children}</div>;
 }
-

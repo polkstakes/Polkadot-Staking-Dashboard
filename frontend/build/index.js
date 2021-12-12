@@ -79,15 +79,19 @@ __export(root_exports, {
 var import_remix2 = __toModule(require("remix"));
 
 // app/styles/global.css
-var global_default = "/build/_assets/global-FKJGCXYX.css";
+var global_default = "/build/_assets/global-HUNEOKVS.css";
 
 // app/styles/dark.css
-var dark_default = "/build/_assets/dark-APYDFYJA.css";
+var dark_default = "/build/_assets/dark-6BS6Y2E4.css";
+
+// node_modules/antd/dist/antd.css
+var antd_default = "/build/_assets/antd-UOZEVVMX.css";
 
 // route-module:/Users/ashik/Personal/hackathon/polkadot-staking-dashboard/frontend/app/root.tsx
 var links = () => {
   return [
     { rel: "stylesheet", href: global_default },
+    { rel: "stylesheet", href: antd_default },
     {
       rel: "stylesheet",
       href: dark_default,
@@ -144,10 +148,12 @@ function Layout({ children }) {
 var routes_exports = {};
 __export(routes_exports, {
   default: () => Index,
-  loader: () => loader,
   meta: () => meta
 });
-var import_remix3 = __toModule(require("remix"));
+
+// app/hooks/useRankingData.tsx
+var import_jotai = __toModule(require("jotai"));
+var import_react = __toModule(require("react"));
 
 // app/data/rankingData.tsx
 var import_api = __toModule(require("@polkadot/api"));
@@ -492,8 +498,12 @@ var getClusterInfo = (hasSubIdentity, validators, validatorIdentities) => {
 // app/data/queries.ts
 var import_graphql_request = __toModule(require("graphql-request"));
 var GetValidatorAddresses = import_graphql_request.gql`
-  query {
-    validatorsInfos(first: 500) {
+  query GetValidators($after: Cursor) {
+    validatorsInfos(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
       }
@@ -501,8 +511,12 @@ var GetValidatorAddresses = import_graphql_request.gql`
   }
 `;
 var GetEraSalashes = import_graphql_request.gql`
-  query {
-    eraSlashes(first: 500) {
+  query GetEraSalashes($after: Cursor) {
+    eraSlashes(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         validators
@@ -511,8 +525,12 @@ var GetEraSalashes = import_graphql_request.gql`
   }
 `;
 var GetEraPreferences = import_graphql_request.gql`
-  query {
-    eraPreferences(first: 500) {
+  query GetEraPreferences($after: Cursor) {
+    eraPreferences(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         validators
@@ -521,8 +539,12 @@ var GetEraPreferences = import_graphql_request.gql`
   }
 `;
 var GetProposals = import_graphql_request.gql`
-  query {
-    proposals(first: 500) {
+  query GetProposals($after: Cursor) {
+    proposals(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         proposer
@@ -539,8 +561,12 @@ var GetMaxNominatorRewardedPerValidator = import_graphql_request.gql`
   }
 `;
 var GetCouncilVotes = import_graphql_request.gql`
-  query {
-    councilVotes(first: 500) {
+  query GetCouncilVotes($after: Cursor) {
+    councilVotes(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         stake
@@ -550,8 +576,12 @@ var GetCouncilVotes = import_graphql_request.gql`
   }
 `;
 var GetEraPoints = import_graphql_request.gql`
-  query {
-    eraPoints(first: 500) {
+  query GetEraPoints($after: Cursor) {
+    eraPoints(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         eraPoints
@@ -561,8 +591,12 @@ var GetEraPoints = import_graphql_request.gql`
   }
 `;
 var GetNomination = import_graphql_request.gql`
-  query {
-    nominations(first: 500) {
+  query GetNomination($after: Cursor) {
+    nominations(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         nominator
@@ -572,8 +606,12 @@ var GetNomination = import_graphql_request.gql`
   }
 `;
 var GetReferendums = import_graphql_request.gql`
-  query {
-    referendums(first: 500) {
+  query GetReferendums($after: Cursor) {
+    referendums(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         votes
@@ -591,32 +629,51 @@ var stakingQueryFlags = {
   withNominations: false,
   withPrefs: true
 };
+async function fetchAll(query, key) {
+  const subquery = new import_graphql_request2.GraphQLClient("https://api.subquery.network/sq/ashikmeerankutty/staking-subquery");
+  let hasNext = true;
+  let data = [];
+  let cursor = "";
+  while (hasNext) {
+    const gqlData = await subquery.request(query, {
+      after: cursor
+    });
+    if (gqlData[key]) {
+      data = [...data, ...gqlData[key].nodes];
+    }
+    hasNext = gqlData[key].pageInfo.hasNextPage;
+    cursor = gqlData[key].pageInfo.endCursor;
+  }
+  console.log(data);
+  return data;
+}
 async function getRankingData() {
   const api = await import_api.ApiPromise.create({ provider });
-  const subquery = new import_graphql_request2.GraphQLClient("https://api.subquery.network/sq/ashikmeerankutty/staking-subquery");
-  const { validatorsInfos } = await subquery.request(GetValidatorAddresses);
-  const validatorsInfo = await Promise.all(validatorsInfos.nodes.map(async (authority) => {
-    const accountInfo = await accountQuery(authority.id, stakingQueryFlags, api);
-    const identity = await getValidatorsWithIdentity(api, [authority.id]);
+  const validatorsInfos = await fetchAll(GetValidatorAddresses, "validatorsInfos");
+  const validatorsInfo = await Promise.all(validatorsInfos.map(async (authority) => {
+    const accountId = authority.id;
+    const accountInfo = await accountQuery(accountId, stakingQueryFlags, api);
+    const identity = await getValidatorsWithIdentity(api, [accountId]);
     return __spreadProps(__spreadValues({}, accountInfo), {
       identity,
       active: true
     });
   }));
-  const { referendums } = await subquery.request(GetReferendums);
-  const { nominations } = await subquery.request(GetNomination);
-  const { proposals } = await subquery.request(GetProposals);
-  const { councilVotes } = await subquery.request(GetCouncilVotes);
-  const { eraSlashes } = await subquery.request(GetEraSalashes);
-  const { eraPreferences } = await subquery.request(GetEraPreferences);
-  const { eraPoints } = await subquery.request(GetEraPoints);
+  const subquery = new import_graphql_request2.GraphQLClient("https://api.subquery.network/sq/ashikmeerankutty/staking-subquery");
+  const referendums = await fetchAll(GetReferendums, "referendums");
+  const nominations = await fetchAll(GetNomination, "nominations");
+  const proposals = await fetchAll(GetProposals, "proposals");
+  const councilVotes = await fetchAll(GetCouncilVotes, "councilVotes");
+  const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
+  const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
+  const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
   const { maxNominatorRewardedPerValidator } = await subquery.request(GetMaxNominatorRewardedPerValidator);
   const participateInGovernance = [];
-  proposals.nodes.forEach(({ seconds, proposer }) => {
+  proposals.forEach(({ seconds, proposer }) => {
     participateInGovernance.push(proposer.toString());
     seconds.forEach((accountId) => participateInGovernance.push(accountId.toString()));
   });
-  referendums.nodes.forEach(({ votes }) => {
+  referendums.forEach(({ votes }) => {
     votes.forEach(({ accountId }) => participateInGovernance.push(accountId.toString()));
   });
   const clusters = [];
@@ -639,17 +696,17 @@ async function getRankingData() {
     }
     const partOfCluster = clusterMembers > 1;
     const subAccountsRating = hasSubIdentity ? 2 : 0;
-    const nominators = active ? validator.exposure.others : nominations.nodes.filter((nomination) => nomination.targets.some((target) => target === validator.accountId.toString())).length;
+    const nominators = active ? validator.exposure.others : nominations.filter((nomination) => nomination.targets.some((target) => target === validator.accountId.toString())).length;
     console.log(maxNominatorRewardedPerValidator.maxNominatorRewardedPerValidator);
     const nominatorsRating = nominators > 0 && nominators <= maxNominatorRewardedPerValidator.maxNominatorRewardedPerValidator.toNumber() ? 2 : 0;
-    const slashes = eraSlashes.nodes.filter(({ validators }) => {
+    const slashes = eraSlashes.filter(({ validators }) => {
       const parsedValidators = JSON.parse(validators);
       return parsedValidators[validator.accountId.toString()];
     }) || [];
     const slashed = slashes.length > 0;
     const slashRating = slashed ? 0 : 2;
     const commission = parseInt(validator.validatorPrefs.commission.toString(), 10) / 1e7;
-    const commissionHistory = getCommissionHistory(validator.accountId, eraPreferences.nodes.map((pref) => {
+    const commissionHistory = getCommissionHistory(validator.accountId, eraPreferences.map((pref) => {
       return __spreadProps(__spreadValues({}, pref), {
         validators: JSON.parse(pref.validators)
       });
@@ -660,13 +717,14 @@ async function getRankingData() {
     const stakeHistory = [];
     let activeEras = 0;
     let performance = 0;
-    eraPoints.nodes.forEach((eraPoints2) => {
+    eraPoints.forEach((eraPoints2) => {
       const { id } = eraPoints2;
       let eraPayoutState = "inactive";
       let eraPerformance = 0;
-      if (eraPoints2.validators[stashAddress]) {
+      const validators = JSON.parse(eraPoints2.validators);
+      if (validators[stashAddress]) {
         activeEras += 1;
-        const points = parseInt(eraPoints2.validators[stashAddress].toString(), 10);
+        const points = parseInt(validators[stashAddress].toString(), 10);
         eraPointsHistory.push({
           era: new import_bignumber2.BigNumber(id.toString()).toString(10),
           points
@@ -696,7 +754,7 @@ async function getRankingData() {
     });
     const eraPointsHistoryValidator = eraPointsHistory.reduce((total, era) => total + era.points, 0);
     const eraPointsHistoryTotals = [];
-    eraPoints.nodes.forEach(({ eraPoints: eraPoints2 }) => {
+    eraPoints.forEach(({ eraPoints: eraPoints2 }) => {
       eraPointsHistoryTotals.push(parseInt(eraPoints2.toString(), 10));
     });
     const eraPointsHistoryTotalsSum = eraPointsHistoryTotals.reduce((total, num) => total + num, 0);
@@ -705,7 +763,7 @@ async function getRankingData() {
     const eraPointsPercent = eraPointsHistoryValidator * 100 / eraPointsHistoryTotalsSum;
     const eraPointsRating = eraPointsHistoryValidator > eraPointsAverage ? 2 : 0;
     const payoutRating = getPayoutRating(payoutHistory);
-    const councilBacking = ((_a = validator.identity) == null ? void 0 : _a.parent) ? councilVotes.nodes.some((vote) => vote.id.toString() === validator.accountId.toString()) || councilVotes.nodes.some((vote) => vote.id.toString() === validator.identity.parent.toString()) : councilVotes.nodes.some((vote) => vote.id.toString() === validator.accountId.toString());
+    const councilBacking = ((_a = validator.identity) == null ? void 0 : _a.parent) ? councilVotes.some((vote) => vote.id.toString() === validator.accountId.toString()) || councilVotes.some((vote) => vote.id.toString() === validator.identity.parent.toString()) : councilVotes.some((vote) => vote.id.toString() === validator.accountId.toString());
     const activeInGovernance = ((_b = validator.identity) == null ? void 0 : _b.parent) ? participateInGovernance.includes(validator.accountId.toString()) || participateInGovernance.includes(validator.identity.parent.toString()) : participateInGovernance.includes(validator.accountId.toString());
     let governanceRating = 0;
     if (councilBacking && activeInGovernance) {
@@ -719,6 +777,7 @@ async function getRankingData() {
     const showClusterMember = true;
     const totalRating = activeRating + identityRating + subAccountsRating + nominatorsRating + commissionRating + slashRating + governanceRating + eraPointsRating + payoutRating;
     return {
+      accountId: validator.accountId,
       active,
       activeRating,
       name,
@@ -753,16 +812,174 @@ async function getRankingData() {
       eraPointsPercent
     };
   });
+  return rankingData.sort((a, b) => a.totalRating < b.totalRating ? 1 : -1);
+}
+
+// app/hooks/useRankingData.tsx
+var rankingDataAtom = (0, import_jotai.atom)([]);
+function useRankingData() {
+  const [loading, setLoading] = (0, import_react.useState)(false);
+  const [rankingData, setRankingData] = (0, import_jotai.useAtom)(rankingDataAtom);
+  async function fetchRankingData() {
+    setLoading(true);
+    const validatorRankingData = await getRankingData();
+    setRankingData(validatorRankingData);
+    setLoading(false);
+  }
+  (0, import_react.useEffect)(() => {
+    if (!rankingData.length) {
+      fetchRankingData();
+    }
+  }, []);
   return {
-    rankingData
+    rankingData,
+    loading
   };
 }
 
-// route-module:/Users/ashik/Personal/hackathon/polkadot-staking-dashboard/frontend/app/routes/index.tsx
-var loader = async () => {
-  const validatorAddresses = await getRankingData();
-  return (0, import_remix3.json)(validatorAddresses);
+// app/components/ValidatorsDashboard.tsx
+var import_react2 = __toModule(require("@emotion/react"));
+
+// app/components/ValidatorsTable.tsx
+var import_antd2 = __toModule(require("antd"));
+var import_bignumber3 = __toModule(require("bignumber.js"));
+var toMDOT = (value) => {
+  return `${value.dividedBy(new import_bignumber3.default(1e16)).toFixed(4)}MDOT`;
 };
+var toDOT = (value) => {
+  return `${value.dividedBy(new import_bignumber3.default(1e10)).toFixed(4)}DOT`;
+};
+var columns = [
+  {
+    title: "Name / Account Id",
+    dataIndex: "name",
+    key: "name"
+  },
+  {
+    title: "Commission",
+    dataIndex: "commission",
+    key: "commission"
+  },
+  {
+    title: "Total Rating",
+    dataIndex: "totalRating",
+    key: "totalRating"
+  },
+  {
+    title: "Total Stake",
+    dataIndex: "totalStake",
+    key: "totalStake"
+  },
+  {
+    title: "Own Stake",
+    dataIndex: "ownStake",
+    key: "ownStake"
+  },
+  {
+    title: "Others Stake",
+    dataIndex: "othersStake",
+    key: "othersStake"
+  },
+  {
+    title: "Active Eras",
+    dataIndex: "activeEras",
+    key: "activeEras"
+  },
+  {
+    title: "Tags",
+    key: "tags",
+    dataIndex: "tags",
+    render: (tags) => /* @__PURE__ */ React.createElement(React.Fragment, null, tags.map((tag) => {
+      let color = tag.length > 5 ? "geekblue" : "green";
+      if (tag === "loser") {
+        color = "volcano";
+      }
+      return /* @__PURE__ */ React.createElement(import_antd2.Tag, {
+        color,
+        key: tag
+      }, tag.toUpperCase());
+    }))
+  },
+  {
+    title: "Action",
+    key: "action",
+    render: (text, record) => /* @__PURE__ */ React.createElement(import_antd2.Space, {
+      size: "middle"
+    }, /* @__PURE__ */ React.createElement("a", null, "Delete"))
+  }
+];
+var getTags = (data) => {
+  const tags = [];
+  if (data.verifiedIdentity) {
+    tags.push("Verified Identity");
+  }
+  if (data.councilBacking) {
+    tags.push("Council Backing");
+  }
+  if (data.activeInGovernance) {
+    tags.push("Active In Governance");
+  }
+  if (data.partOfCluster) {
+    tags.push("Part of cluster");
+  }
+  if (data.slashed) {
+    tags.push("Slashed");
+  }
+  return tags;
+};
+var ValidatorsTable = ({
+  rankingData = []
+}) => {
+  const tableData = rankingData.map((data) => {
+    return {
+      key: data.accountId,
+      name: data.name || data.accountId.toString(),
+      commission: `${data.commission.toFixed(2).toString()}%`,
+      totalRating: data.totalRating.toString(),
+      totalStake: toMDOT(data.totalStake),
+      othersStake: toMDOT(data.otherStake),
+      ownStake: toDOT(data.selfStake),
+      activeEras: data.activeEras,
+      tags: getTags(data)
+    };
+  });
+  return /* @__PURE__ */ React.createElement(import_antd2.Table, {
+    columns,
+    dataSource: tableData
+  });
+};
+
+// app/components/ValidatorsDashboard.tsx
+var headerStyle = import_react2.css`
+  display: flex;
+  alignitems: center;
+  justify-content: center;
+  padding: 20px 0px;
+`;
+var headerTitleStyle = import_react2.css`
+  text-align: center;
+`;
+var containerStyle = import_react2.css`
+  padding: 0 50px;
+`;
+function ValidatorsDashboard() {
+  const { rankingData, loading } = useRankingData();
+  if (loading) {
+    return /* @__PURE__ */ (0, import_react2.jsx)("div", null, "loading");
+  }
+  return /* @__PURE__ */ (0, import_react2.jsx)("div", {
+    css: containerStyle
+  }, /* @__PURE__ */ (0, import_react2.jsx)("div", {
+    css: headerStyle,
+    className: "header"
+  }, /* @__PURE__ */ (0, import_react2.jsx)("h3", {
+    css: headerTitleStyle
+  }, "PolkStakes")), /* @__PURE__ */ (0, import_react2.jsx)("div", null, /* @__PURE__ */ (0, import_react2.jsx)(ValidatorsTable, {
+    rankingData
+  })));
+}
+
+// route-module:/Users/ashik/Personal/hackathon/polkadot-staking-dashboard/frontend/app/routes/index.tsx
 var meta = () => {
   return {
     title: "Remix Starter",
@@ -770,11 +987,9 @@ var meta = () => {
   };
 };
 function Index() {
-  let data = (0, import_remix3.useLoaderData)();
-  console.log(data);
   return /* @__PURE__ */ React.createElement("div", {
     className: "remix__page"
-  }, "Hello");
+  }, /* @__PURE__ */ React.createElement(ValidatorsDashboard, null));
 }
 
 // <stdin>

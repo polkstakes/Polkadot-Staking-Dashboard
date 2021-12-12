@@ -1,8 +1,12 @@
 import { gql } from "graphql-request";
 
 export const GetValidatorAddresses = gql`
-  query {
-    validatorsInfos(first: 500) {
+  query GetValidators($after: Cursor) {
+    validatorsInfos(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
       }
@@ -11,8 +15,12 @@ export const GetValidatorAddresses = gql`
 `;
 
 export const GetEraSalashes = gql`
-  query {
-    eraSlashes(first: 500) {
+  query GetEraSalashes($after: Cursor) {
+    eraSlashes(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         validators
@@ -22,8 +30,12 @@ export const GetEraSalashes = gql`
 `;
 
 export const GetEraPreferences = gql`
-  query {
-    eraPreferences(first: 500) {
+  query GetEraPreferences($after: Cursor) {
+    eraPreferences(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         validators
@@ -33,8 +45,12 @@ export const GetEraPreferences = gql`
 `;
 
 export const GetProposals = gql`
-  query {
-    proposals(first: 500) {
+  query GetProposals($after: Cursor) {
+    proposals(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         proposer
@@ -53,8 +69,12 @@ export const GetMaxNominatorRewardedPerValidator = gql`
 `;
 
 export const GetCouncilVotes = gql`
-  query {
-    councilVotes(first: 500) {
+  query GetCouncilVotes($after: Cursor) {
+    councilVotes(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         stake
@@ -64,10 +84,13 @@ export const GetCouncilVotes = gql`
   }
 `;
 
-
 export const GetEraPoints = gql`
-  query {
-    eraPoints(first: 500) {
+  query GetEraPoints($after: Cursor) {
+    eraPoints(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         eraPoints
@@ -78,8 +101,12 @@ export const GetEraPoints = gql`
 `;
 
 export const GetNomination = gql`
-  query {
-    nominations(first: 500) {
+  query GetNomination($after: Cursor) {
+    nominations(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         nominator
@@ -90,8 +117,12 @@ export const GetNomination = gql`
 `;
 
 export const GetReferendums = gql`
-  query {
-    referendums(first: 500) {
+  query GetReferendums($after: Cursor) {
+    referendums(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         id
         votes

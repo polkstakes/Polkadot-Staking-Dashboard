@@ -1,6 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { WsProvider } from "@polkadot/rpc-provider";
-import { GraphQLClient } from "graphql-request";
+import { GraphQLClient, RequestDocument } from "graphql-request";
 import { getValidatorsWithIdentity } from "./handlers/identity";
 import { accountQuery } from "./handlers/query";
 import { BigNumber } from "bignumber.js";
@@ -22,6 +22,7 @@ import {
   GetReferendums,
   GetValidatorAddresses,
 } from "./queries";
+import { RankingData } from "./types";
 
 const provider = new WsProvider("wss://polkadot.api.onfinality.io/public-ws");
 
@@ -33,24 +34,35 @@ const stakingQueryFlags = {
   withPrefs: true,
 };
 
-type ValidatorInfo = {
-  id: string;
-};
-
-export async function getRankingData() {
-  const api = await ApiPromise.create({ provider });
+export async function fetchAll(query: RequestDocument, key: string) {
   const subquery = new GraphQLClient(
     "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
   );
-  const { validatorsInfos } = await subquery.request(GetValidatorAddresses);
+  let hasNext = true;
+  let data: unknown[] = [];
+  let cursor = "";
+  while (hasNext) {
+    const gqlData = await subquery.request(query, {
+      after: cursor,
+    });
+    if (gqlData[key]) {
+      data = [...data, ...gqlData[key].nodes];
+    }
+    hasNext = gqlData[key].pageInfo.hasNextPage;
+    cursor = gqlData[key].pageInfo.endCursor;
+  }
+  console.log(data);
+  return data
+}
+
+export async function getRankingData(): Promise<RankingData[]> {
+  const api = await ApiPromise.create({ provider });
+  const validatorsInfos = await fetchAll(GetValidatorAddresses, 'validatorsInfos');
   const validatorsInfo = await Promise.all(
-    validatorsInfos.nodes.map(async (authority: ValidatorInfo) => {
-      const accountInfo = await accountQuery(
-        authority.id,
-        stakingQueryFlags,
-        api
-      );
-      const identity = await getValidatorsWithIdentity(api, [authority.id]);
+    validatorsInfos.map(async (authority: any) => {
+      const accountId = authority.id;
+      const accountInfo = await accountQuery(accountId as string, stakingQueryFlags, api);
+      const identity = await getValidatorsWithIdentity(api, [accountId]);
       return {
         ...accountInfo,
         identity,
@@ -59,20 +71,25 @@ export async function getRankingData() {
     })
   );
 
-  const { referendums } = await subquery.request(GetReferendums);
-  const { nominations } = await subquery.request(GetNomination);
-  const { proposals } = await subquery.request(GetProposals);
-  const { councilVotes } = await subquery.request(GetCouncilVotes);
-  const { eraSlashes } = await subquery.request(GetEraSalashes);
-  const { eraPreferences } = await subquery.request(GetEraPreferences);
-  const { eraPoints } = await subquery.request(GetEraPoints);
+  const subquery = new GraphQLClient(
+    "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
+  );
+
+  const referendums = await fetchAll(GetReferendums, "referendums");
+  const nominations = await fetchAll(GetNomination, "nominations");
+  const proposals = await fetchAll(GetProposals, "proposals");
+  const councilVotes = await fetchAll(GetCouncilVotes, "councilVotes");
+  const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
+  const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
+  const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
+
   const { maxNominatorRewardedPerValidator } = await subquery.request(
     GetMaxNominatorRewardedPerValidator
   );
 
   const participateInGovernance: any = [];
   // @ts-expect-error
-  proposals.nodes.forEach(({ seconds, proposer }) => {
+  proposals.forEach(({ seconds, proposer }) => {
     participateInGovernance.push(proposer.toString());
     // @ts-expect-error
     seconds.forEach((accountId) =>
@@ -80,7 +97,7 @@ export async function getRankingData() {
     );
   });
   // @ts-expect-error
-  referendums.nodes.forEach(({ votes }) => {
+  referendums.forEach(({ votes }) => {
     // @ts-expect-error
     votes.forEach(({ accountId }) =>
       participateInGovernance.push(accountId.toString())
@@ -89,7 +106,7 @@ export async function getRankingData() {
 
   const clusters: any = [];
 
-  const rankingData = validatorsInfo.map((validator: any) => {
+  const rankingData = validatorsInfo.map((validator: any): RankingData => {
     const { active } = validator;
     const activeRating = active ? 2 : 0;
     const stashAddress = validator.stashId.toString();
@@ -113,7 +130,8 @@ export async function getRankingData() {
     const subAccountsRating = hasSubIdentity ? 2 : 0;
     const nominators = active
       ? validator.exposure.others
-      : nominations.nodes.filter((nomination: { targets: [string] }) =>
+      // @ts-expect-error
+      : nominations.filter((nomination: { targets: [string] }) =>
           nomination.targets.some(
             // @ts-ignore
             (target) => target === validator.accountId.toString()
@@ -129,7 +147,7 @@ export async function getRankingData() {
         ? 2
         : 0;
     const slashes =
-      eraSlashes.nodes.filter(
+      eraSlashes.filter(
         // @ts-ignore
         ({ validators }) => {
           const parsedValidators = JSON.parse(validators);
@@ -145,7 +163,7 @@ export async function getRankingData() {
 
     const commissionHistory = getCommissionHistory(
       validator.accountId,
-      eraPreferences.nodes.map((pref: any) => {
+      eraPreferences.map((pref: any) => {
         return {
           ...pref,
           validators: JSON.parse(pref.validators),
@@ -161,16 +179,14 @@ export async function getRankingData() {
     let activeEras = 0;
     let performance = 0;
     // eslint-disable-next-line
-    eraPoints.nodes.forEach((eraPoints: any) => {
+    eraPoints.forEach((eraPoints: any) => {
       const { id } = eraPoints;
       let eraPayoutState = "inactive";
       let eraPerformance = 0;
-      if (eraPoints.validators[stashAddress]) {
+      const validators = JSON.parse(eraPoints.validators);
+      if (validators[stashAddress]) {
         activeEras += 1;
-        const points = parseInt(
-          eraPoints.validators[stashAddress].toString(),
-          10
-        );
+        const points = parseInt(validators[stashAddress].toString(), 10);
         eraPointsHistory.push({
           era: new BigNumber(id.toString()).toString(10),
           points,
@@ -207,7 +223,7 @@ export async function getRankingData() {
       0
     );
     const eraPointsHistoryTotals: any = [];
-    eraPoints.nodes.forEach(({ eraPoints }: any) => {
+    eraPoints.forEach(({ eraPoints }: any) => {
       eraPointsHistoryTotals.push(parseInt(eraPoints.toString(), 10));
     });
     const eraPointsHistoryTotalsSum = eraPointsHistoryTotals.reduce(
@@ -226,15 +242,15 @@ export async function getRankingData() {
     const payoutRating = getPayoutRating(payoutHistory);
 
     const councilBacking = validator.identity?.parent
-      ? councilVotes.nodes.some(
+      ? councilVotes.some(
           // @ts-ignore
           (vote) => vote.id.toString() === validator.accountId.toString()
         ) ||
-        councilVotes.nodes.some(
+        councilVotes.some(
           // @ts-ignore
           (vote) => vote.id.toString() === validator.identity.parent.toString()
         )
-      : councilVotes.nodes.some(
+      : councilVotes.some(
           // @ts-ignore
           (vote) => vote.id.toString() === validator.accountId.toString()
         );
@@ -268,6 +284,7 @@ export async function getRankingData() {
       payoutRating;
 
     return {
+      accountId: validator.accountId,
       active,
       activeRating,
       name,
@@ -303,7 +320,5 @@ export async function getRankingData() {
     };
   });
 
-  return {
-    rankingData,
-  };
+  return rankingData.sort((a, b) => (a.totalRating < b.totalRating ? 1 : -1));
 }
