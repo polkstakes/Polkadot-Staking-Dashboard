@@ -58,7 +58,7 @@ export async function fetchAll(query: RequestDocument, key: string) {
 }
 
 export enum Status {
-  IDLE = "IDLE",
+  INITIALIZING = "INITIALIZING",
   FETCHING_VALIDATORS = "FETCHING_VALIDATORS",
   FETCHING_REFERENDUMS = "FETCHING_REFERENDUMS",
   FETCHING_NOMINATIONS = "FETCHING_NOMINATIONS",
@@ -69,6 +69,7 @@ export enum Status {
   FETCHING_ERA_POINTS = "FETCHING_ERA_POINTS",
   FETCHING_STAKING_REWARDS = "FETCHING_STAKING_REWARDS",
   CALCULATING_RANKS = "CALCULATING_RANKS",
+  COMPLETED = "COMPLETED",
 }
 
 export async function getRankingData(
@@ -392,7 +393,7 @@ export async function getRankingData(
     };
   });
 
-  setStatus(Status.IDLE)
+  setStatus(Status.COMPLETED)
 
   return rankingData.sort((a, b) => (a.totalRating < b.totalRating ? 1 : -1));
 }

@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { useRankingData } from "~/hooks/useRankingData";
-import { Layout } from "antd";
+import { Layout, Progress } from "antd";
 import { Content, Header } from "antd/lib/layout/layout";
 import { css, jsx } from "@emotion/react";
 import { toDOT, ValidatorsTable } from "./ValidatorsTable";
@@ -55,7 +55,7 @@ const statsStyle = css`
     letter-spacing: -0.3px;
     color: #080b2d;
   }
-  >div {
+  > div {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -67,7 +67,7 @@ const statsStyle = css`
 `;
 
 export function ValidatorsDashboard() {
-  const { rankingData, loading } = useRankingData();
+  const { rankingData, loading, info } = useRankingData();
 
   const avgCommission =
     rankingData.reduce((acc, curr) => {
@@ -92,7 +92,9 @@ export function ValidatorsDashboard() {
     <div css={containerStyle}>
       <div>
         <div css={headerStyle} className="header">
-          <h3 css={headerTitleStyle}><strong>POLKSTAKES</strong> Ranking</h3>
+          <h3 css={headerTitleStyle}>
+            <strong>POLKSTAKES</strong> Ranking
+          </h3>
         </div>
         <div css={statsStyle}>
           <div>
@@ -112,6 +114,19 @@ export function ValidatorsDashboard() {
             <span>{avgRewardedDot}</span>
           </div>
         </div>
+        {loading && (
+          <div>
+            {info.text}
+            <Progress
+              size="small"
+              strokeColor={{
+                "0%": "#108ee9",
+                "100%": "#87d068",
+              }}
+              percent={info.progress}
+            />
+          </div>
+        )}
         <div>
           <ValidatorsTable loading={loading} rankingData={rankingData} />
         </div>
