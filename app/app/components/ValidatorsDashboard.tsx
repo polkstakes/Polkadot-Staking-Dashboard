@@ -119,11 +119,11 @@ export function ValidatorsDashboard() {
           </div>
           <div>
             <h3>Avg Commission</h3>
-            <span>{avgCommission.toFixed(2)}%</span>
+            <span>{avgCommission ? avgCommission.toFixed(2) : 0}%</span>
           </div>
           <div>
             <h3>Avg Polkstakes Rating</h3>
-            <span>{avgRating.toFixed(2)}</span>
+            <span>{avgRating ? avgRating.toFixed(2): 0}</span>
           </div>
           <div>
             <h3>Total Rewarded</h3>
