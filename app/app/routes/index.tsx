@@ -4,8 +4,8 @@ import { ValidatorsDashboard } from "~/components/ValidatorsDashboard";
 
 export let meta: MetaFunction = () => {
   return {
-    title: "Remix Starter",
-    description: "Welcome to remix!"
+    title: "PolkStakes - Polkadot Staking Dashboard",
+    description: "Polkadot Staking Dashboard"
   };
 };
 
