@@ -4,7 +4,6 @@ import BigNumber from "bignumber.js";
 import { RankingData } from "~/data/types";
 
 const toMDOT = (value: BigNumber) => {
-  console.log(value);
   return `${new BigNumber(value)
     .dividedBy(new BigNumber(10000000000000000))
     .toFixed(4)}MDOT`;

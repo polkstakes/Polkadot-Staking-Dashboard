@@ -44,7 +44,7 @@ export async function fetchAll(query: RequestDocument, key: string) {
   let cursor = "";
   let pageCount = 0;
   while (hasNext && pageCount < 6) {
-    pageCount +=1 ;
+    pageCount += 1;
     const gqlData = await subquery.request(query, {
       after: cursor,
     });
@@ -57,11 +57,27 @@ export async function fetchAll(query: RequestDocument, key: string) {
   return data;
 }
 
-export async function getRankingData(): Promise<RankingData[]> {
-  console.log("fetching");
+export enum Status {
+  IDLE = "IDLE",
+  FETCHING_VALIDATORS = "FETCHING_VALIDATORS",
+  FETCHING_REFERENDUMS = "FETCHING_REFERENDUMS",
+  FETCHING_NOMINATIONS = "FETCHING_NOMINATIONS",
+  FETCHING_PROPOSALS = "FETCHING_PROPOSALS",
+  FETCHING_COUNCIL_VOTES = "FETCHING_COUNCIL_VOTES",
+  FETCHING_ERA_SLASHES = "FETCHING_ERA_SLASHES",
+  FETCHING_ERA_PREFERENCES = "FETCHING_ERA_PREFERENCES",
+  FETCHING_ERA_POINTS = "FETCHING_ERA_POINTS",
+  FETCHING_STAKING_REWARDS = "FETCHING_STAKING_REWARDS",
+  CALCULATING_RANKS = "CALCULATING_RANKS",
+}
+
+export async function getRankingData(
+  setStatus: (status: Status) => void
+): Promise<RankingData[]> {
   const api = await ApiPromise.create({ provider });
-  
-  const validatorsInfos = await api.query.session.validators();;
+
+  const validatorsInfos = await api.query.session.validators();
+  setStatus(Status.FETCHING_VALIDATORS)
   const validatorsInfo = await Promise.all(
     validatorsInfos.map(async (authority: any) => {
       const accountId = authority;
@@ -78,23 +94,25 @@ export async function getRankingData(): Promise<RankingData[]> {
       };
     })
   );
-  
 
   const subquery = new GraphQLClient(
     "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
   );
-
-  console.log("Fetching Referendums")
+  setStatus(Status.FETCHING_REFERENDUMS)
   const referendums = await fetchAll(GetReferendums, "referendums");
-  console.log("Fetching Referendums", referendums.length)
+  setStatus(Status.FETCHING_NOMINATIONS)
   const nominations = await fetchAll(GetNomination, "nominations");
-  console.log("Fetching Nominations", nominations.length)
+  setStatus(Status.FETCHING_PROPOSALS)
   const proposals = await fetchAll(GetProposals, "proposals");
-  console.log("Fetching Proposals", proposals.length)
+  setStatus(Status.FETCHING_COUNCIL_VOTES)
   const councilVotes = await fetchAll(GetCouncilVotes, "councilVotes");
+  setStatus(Status.FETCHING_ERA_SLASHES)
   const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
+  setStatus(Status.FETCHING_ERA_PREFERENCES)
   const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
+  setStatus(Status.FETCHING_ERA_POINTS)
   const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
+  setStatus(Status.FETCHING_STAKING_REWARDS)
   const stakingRewards = await fetchAll(GetStakingRewards, "stakingRewards");
 
   const stakingRewardsMap: Record<string, { balance: number; date: string }[]> =
@@ -142,6 +160,8 @@ export async function getRankingData(): Promise<RankingData[]> {
   });
 
   const clusters: any = [];
+
+  setStatus(Status.CALCULATING_RANKS)
 
   const rankingData = validatorsInfo.map((validator: any): RankingData => {
     const { active } = validator;
@@ -321,12 +341,17 @@ export async function getRankingData(): Promise<RankingData[]> {
       payoutRating +
       rewardedRating;
 
-    
-    const totalRewarded: BigNumber = rewarded && rewarded.length > 0 ? rewarded.reduce((acc, {balance}) => {
-      return BigNumber.sum(acc, new BigNumber(balance))
-    }, new BigNumber(0)) : new BigNumber(0);
+    const totalRewarded: BigNumber =
+      rewarded && rewarded.length > 0
+        ? rewarded.reduce((acc, { balance }) => {
+            return BigNumber.sum(acc, new BigNumber(balance));
+          }, new BigNumber(0))
+        : new BigNumber(0);
 
-    const averageRewarded: BigNumber = rewarded && rewarded.length > 0 ? totalRewarded.dividedBy(rewarded.length) : new BigNumber(0);
+    const averageRewarded: BigNumber =
+      rewarded && rewarded.length > 0
+        ? totalRewarded.dividedBy(rewarded.length)
+        : new BigNumber(0);
 
     return {
       accountId: validator.accountId,
@@ -366,6 +391,8 @@ export async function getRankingData(): Promise<RankingData[]> {
       averageRewarded,
     };
   });
+
+  setStatus(Status.IDLE)
 
   return rankingData.sort((a, b) => (a.totalRating < b.totalRating ? 1 : -1));
 }
