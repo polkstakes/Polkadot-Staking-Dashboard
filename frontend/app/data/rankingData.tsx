@@ -42,7 +42,9 @@ export async function fetchAll(query: RequestDocument, key: string) {
   let hasNext = true;
   let data: unknown[] = [];
   let cursor = "";
-  while (hasNext) {
+  let pageCount = 0;
+  while (hasNext && pageCount < 6) {
+    pageCount +=1 ;
     const gqlData = await subquery.request(query, {
       after: cursor,
     });
@@ -56,7 +58,9 @@ export async function fetchAll(query: RequestDocument, key: string) {
 }
 
 export async function getRankingData(): Promise<RankingData[]> {
+  console.log("fetching");
   const api = await ApiPromise.create({ provider });
+  
   const validatorsInfos = await api.query.session.validators();;
   const validatorsInfo = await Promise.all(
     validatorsInfos.map(async (authority: any) => {
@@ -74,14 +78,19 @@ export async function getRankingData(): Promise<RankingData[]> {
       };
     })
   );
+  
 
   const subquery = new GraphQLClient(
     "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
   );
 
+  console.log("Fetching Referendums")
   const referendums = await fetchAll(GetReferendums, "referendums");
+  console.log("Fetching Referendums", referendums.length)
   const nominations = await fetchAll(GetNomination, "nominations");
+  console.log("Fetching Nominations", nominations.length)
   const proposals = await fetchAll(GetProposals, "proposals");
+  console.log("Fetching Proposals", proposals.length)
   const councilVotes = await fetchAll(GetCouncilVotes, "councilVotes");
   const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
   const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
