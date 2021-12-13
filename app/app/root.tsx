@@ -13,10 +13,16 @@ import type { LinksFunction } from "remix";
 import globalStylesUrl from "~/styles/global.css";
 import darkStylesUrl from "~/styles/dark.css";
 import antdStylesUrl from "antd/dist/antd.css";
+import favIconUrl from "./assets/icon.jpeg";
 
 // https://remix.run/api/app#links
 export let links: LinksFunction = () => {
   return [
+    {
+      rel: "icon",
+      href: favIconUrl,
+      type: "image/png"
+    },
     { rel: "stylesheet", href: globalStylesUrl },
     { rel: "stylesheet", href: antdStylesUrl },
     {

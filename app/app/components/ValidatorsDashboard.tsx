@@ -1,10 +1,19 @@
 /** @jsx jsx */
 import { useRankingData } from "~/hooks/useRankingData";
-import { Layout, Progress } from "antd";
+import { Layout, Modal, Progress } from "antd";
 import { Content, Header } from "antd/lib/layout/layout";
 import { css, jsx } from "@emotion/react";
-import { toDOT, ValidatorsTable } from "./ValidatorsTable";
+import {
+  selectedAccountIdAtom,
+  showCommissionChartAtom,
+  showRewardsChartAtom,
+  toDOT,
+  ValidatorsTable,
+} from "./ValidatorsTable";
 import BigNumber from "bignumber.js";
+import { useAtom } from "jotai";
+import { RewardsGraph } from "./RewardsGraph";
+import { CommissionsGraph } from "./CommissionsGraph";
 
 const headerStyle = css`
   display: flex;
@@ -79,14 +88,21 @@ export function ValidatorsDashboard() {
       return acc + curr.totalRating;
     }, 0) / rankingData.length;
 
-  const avgRewarded =
+  const totalRewarded =
     rankingData
       .reduce((acc, curr) => {
         return BigNumber.sum(acc, curr.averageRewarded);
-      }, new BigNumber(0))
-      .dividedBy(rankingData.length) || 0;
+      }, new BigNumber(0));
 
-  const avgRewardedDot = toDOT(avgRewarded, 2);
+  const totalRewardedDot = toDOT(totalRewarded, 2);
+
+  const [selectedAccount, setSelectedAccount] = useAtom(selectedAccountIdAtom);
+  const [showRewards, setShowRewards] = useAtom(showRewardsChartAtom);
+  const [showCommission, setShowCommission] = useAtom(showCommissionChartAtom);
+
+  const selectedAccountInfo: any = selectedAccount
+    ? rankingData.find((data) => data.accountId === selectedAccount)
+    : {};
 
   return (
     <div css={containerStyle}>
@@ -110,8 +126,8 @@ export function ValidatorsDashboard() {
             <span>{avgRating.toFixed(2)}</span>
           </div>
           <div>
-            <h3>Avg Rewarded</h3>
-            <span>{avgRewardedDot}</span>
+            <h3>Total Rewarded</h3>
+            <span>{totalRewardedDot}</span>
           </div>
         </div>
         {loading && (
@@ -126,6 +142,22 @@ export function ValidatorsDashboard() {
               percent={info.progress}
             />
           </div>
+        )}
+        {selectedAccount && (
+          <Modal visible={showRewards} footer={null} onCancel={() => {
+            setShowRewards(false);
+            setSelectedAccount('')
+          }}>
+            <RewardsGraph rewarded={selectedAccountInfo.rewarded} />
+          </Modal>
+        )}
+        {selectedAccount && (
+          <Modal visible={showCommission} footer={null} onCancel={() => {
+            setShowCommission(false);
+            setSelectedAccount('')
+          }}>
+            <CommissionsGraph commisionHistory={selectedAccountInfo.commissionHistory} />
+          </Modal>
         )}
         <div>
           <ValidatorsTable loading={loading} rankingData={rankingData} />

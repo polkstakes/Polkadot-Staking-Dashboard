@@ -1,7 +1,12 @@
-
 import { Table, Tag, Space } from "antd";
 import BigNumber from "bignumber.js";
 import { RankingData } from "~/data/types";
+import { LineChartOutlined } from "@ant-design/icons";
+import { atom, useAtom } from "jotai";
+
+export const selectedAccountIdAtom = atom<string>("");
+export const showCommissionChartAtom = atom<boolean>(false);
+export const showRewardsChartAtom = atom<boolean>(false);
 
 const toMDOT = (value: BigNumber) => {
   return `${new BigNumber(value)
@@ -15,14 +20,13 @@ export const toDOT = (value: BigNumber, decimals: number = 4) => {
     .toFixed(decimals)}DOT`;
 };
 
-
 const columns = [
   {
     title: "#",
     dataIndex: "rank",
     key: "rank",
     width: 100,
-    sorter: (a: {rank: number}, b: {rank: number}) => a.rank - b.rank,
+    sorter: (a: { rank: number }, b: { rank: number }) => a.rank - b.rank,
   },
   {
     title: "Name / Account Id",
@@ -35,6 +39,24 @@ const columns = [
     title: "Commission",
     dataIndex: "commission",
     key: "commission",
+    render: (
+      text: any,
+      record: any
+    ) => {
+      const [, setSelectedAccount] = useAtom(selectedAccountIdAtom);
+      const [, setShowCommssion] = useAtom(showCommissionChartAtom);
+      return (
+        <div>
+          {text}{" "}
+          <LineChartOutlined
+            onClick={() => {
+              setSelectedAccount(record.id);
+              setShowCommssion(true);
+            }}
+          />
+        </div>
+      );
+    },
   },
   {
     title: "Polkstakes Rating",
@@ -50,6 +72,24 @@ const columns = [
     title: "Average Rewarded",
     dataIndex: "averageRewarded",
     key: "averegeRewarded",
+    render: (
+      text: any,
+      record: any
+    ) => {
+      const [, setSelectedAccount] = useAtom(selectedAccountIdAtom);
+      const [, setShowRewards] = useAtom(showRewardsChartAtom);
+      return (
+        <div>
+          {text}{" "}
+          <LineChartOutlined
+            onClick={() => {
+              setSelectedAccount(record.id);
+              setShowRewards(true);
+            }}
+          />
+        </div>
+      );
+    },
   },
   {
     title: "Tags",
@@ -58,7 +98,7 @@ const columns = [
     render: (tags: string[]) => (
       <div>
         {tags.map((tag) => {
-          let color =  "geekblue";
+          let color = "geekblue";
           if (tag === "Verified Identity") {
             color = "green";
           }
@@ -112,11 +152,12 @@ const getTags = (data: RankingData) => {
 
 export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
   rankingData = [],
-  loading
+  loading,
 }) => {
   const tableData = rankingData.map((data, index) => {
     return {
       key: data.accountId,
+      id: data.accountId,
       rank: index + 1,
       name: data.name || data.accountId.toString(),
       commission: `${data.commission.toFixed(2).toString()}%`,
@@ -130,5 +171,12 @@ export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
     };
   });
 
-  return <Table  tableLayout="fixed" loading={loading} columns={columns} dataSource={tableData} />;
+  return (
+    <Table
+      tableLayout="fixed"
+      loading={loading}
+      columns={columns}
+      dataSource={tableData}
+    />
+  );
 };

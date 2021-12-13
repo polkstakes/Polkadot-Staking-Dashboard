@@ -18,6 +18,11 @@ export interface CommissionHistory {
   commission: string;
 }
 
+export interface Rewarded {
+  balance: number;
+  date: string;
+}
+
 export interface RankingData {
   accountId: string;
   active: boolean;
@@ -52,6 +57,6 @@ export interface RankingData {
   totalRating: number;
   activeEras: number;
   eraPointsPercent: number;
-  rewarded: { balance: number; date: string }[]
+  rewarded: Rewarded[];
   averageRewarded: BigNumber;
 }

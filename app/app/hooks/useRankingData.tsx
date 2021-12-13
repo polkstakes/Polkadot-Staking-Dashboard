@@ -61,11 +61,10 @@ export function useRankingData() {
   const [status, setStatus] = useState<Status>(Status.INITIALIZING);
   const [rankingData, setRankingData] = useAtom(rankingDataAtom);
 
-  console.log(status);
-
   async function fetchRankingData() {
     setLoading(true);
     const validatorRankingData = await getRankingData(setStatus);
+    console.log(validatorRankingData);
     setRankingData(validatorRankingData);
     setLoading(false);
   }

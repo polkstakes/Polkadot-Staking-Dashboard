@@ -21,7 +21,6 @@ import {
   GetProposals,
   GetReferendums,
   GetStakingRewards,
-  GetValidatorAddresses,
 } from "./queries";
 import { RankingData } from "./types";
 
@@ -43,7 +42,7 @@ export async function fetchAll(query: RequestDocument, key: string) {
   let data: unknown[] = [];
   let cursor = "";
   let pageCount = 0;
-  while (hasNext && pageCount < 6) {
+  while (hasNext && pageCount < 50) {
     pageCount += 1;
     const gqlData = await subquery.request(query, {
       after: cursor,
@@ -97,7 +96,7 @@ export async function getRankingData(
   );
 
   const subquery = new GraphQLClient(
-    "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
+    "https://api.subquery.network/sq/ashikmeerankutty/polkstakes"
   );
   setStatus(Status.FETCHING_REFERENDUMS)
   const referendums = await fetchAll(GetReferendums, "referendums");
