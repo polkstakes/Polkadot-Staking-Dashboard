@@ -81,6 +81,8 @@ const columns = [
     title: "Average Rewarded",
     dataIndex: "averageRewarded",
     key: "averegeRewarded",
+    width: 200,
+    sorter: (a: { averageRewardedValue: BigNumber }, b: { averageRewardedValue: BigNumber }) => a.averageRewardedValue.lt(b.averageRewardedValue) ? 1 : -1,
     render: (
       text: any,
       record: any
@@ -177,6 +179,7 @@ export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
       activeEras: data.activeEras,
       tags: getTags(data),
       averageRewarded: toDOT(data.averageRewarded),
+      averageRewardedValue: data.averageRewarded,
     };
   });
 
