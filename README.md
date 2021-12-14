@@ -7,7 +7,6 @@ Polkadot Staking Dashboard
 From your terminal:
 
 ```sh
-cd app
 npm install
 npm run dev
 ```
