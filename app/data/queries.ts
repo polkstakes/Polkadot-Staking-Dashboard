@@ -133,18 +133,21 @@ export const GetReferendums = gql`
 
 export const GetStakingRewards = gql`
   query GetStakingRewards($before: Cursor) {
-    stakingRewards(last: 100, before: $before) {
+    sumRewards(last: 100 before: $before) {
+      totalCount
       pageInfo {
         hasPreviousPage
         startCursor
       }
       nodes {
         id
-        account {
-          id
+        rewards {
+          totalCount
+          nodes {
+            balance
+            date
+          }
         }
-        balance
-        date
       }
     }
   }

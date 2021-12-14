@@ -99,7 +99,7 @@ export async function getRankingData(
   const api = await ApiPromise.create({ provider });
 
   const validatorsInfos = await api.query.session.validators();
-  setStatus(Status.FETCHING_VALIDATORS)
+  setStatus(Status.FETCHING_VALIDATORS);
   const validatorsInfo = await Promise.all(
     validatorsInfos.map(async (authority: any) => {
       const accountId = authority;
@@ -120,41 +120,32 @@ export async function getRankingData(
   const subquery = new GraphQLClient(
     "https://api.subquery.network/sq/ashikmeerankutty/polkstakes"
   );
-  setStatus(Status.FETCHING_REFERENDUMS)
+  setStatus(Status.FETCHING_REFERENDUMS);
   const referendums = await fetchAll(GetReferendums, "referendums");
-  setStatus(Status.FETCHING_NOMINATIONS)
+  setStatus(Status.FETCHING_NOMINATIONS);
   const nominations = await fetchAll(GetNomination, "nominations");
-  setStatus(Status.FETCHING_PROPOSALS)
+  setStatus(Status.FETCHING_PROPOSALS);
   const proposals = await fetchAll(GetProposals, "proposals");
-  setStatus(Status.FETCHING_COUNCIL_VOTES)
+  setStatus(Status.FETCHING_COUNCIL_VOTES);
   const councilVotes = await fetchAll(GetCouncilVotes, "councilVotes");
-  setStatus(Status.FETCHING_ERA_SLASHES)
+  setStatus(Status.FETCHING_ERA_SLASHES);
   const eraSlashes = await fetchAll(GetEraSalashes, "eraSlashes");
-  setStatus(Status.FETCHING_ERA_PREFERENCES)
+  setStatus(Status.FETCHING_ERA_PREFERENCES);
   const eraPreferences = await fetchAll(GetEraPreferences, "eraPreferences");
-  setStatus(Status.FETCHING_ERA_POINTS)
+  setStatus(Status.FETCHING_ERA_POINTS);
   const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
-  setStatus(Status.FETCHING_STAKING_REWARDS)
-  const stakingRewards = await fetchEnd(GetStakingRewards, "stakingRewards");
+  setStatus(Status.FETCHING_STAKING_REWARDS);
+  const stakingRewards = await fetchEnd(GetStakingRewards, "sumRewards");
 
   const stakingRewardsMap: Record<string, { balance: number; date: string }[]> =
     stakingRewards.reduce(
       (
         acc: Record<string, { balance: number; date: string }[]>,
-        stakingReward: any
+        staking: any
       ) => {
-        const {
-          account: { id },
-          balance,
-          date,
-        } = stakingReward;
-        const data = {
-          balance,
-          date,
-        };
         return {
           ...acc,
-          [id]: [...(acc[id] || []), data],
+          [staking.id]: staking.rewards.nodes,
         };
       },
       {}
@@ -183,7 +174,7 @@ export async function getRankingData(
 
   const clusters: any = [];
 
-  setStatus(Status.CALCULATING_RANKS)
+  setStatus(Status.CALCULATING_RANKS);
 
   const rankingData = validatorsInfo.map((validator: any): RankingData => {
     const { active } = validator;
@@ -414,7 +405,7 @@ export async function getRankingData(
     };
   });
 
-  setStatus(Status.COMPLETED)
+  setStatus(Status.COMPLETED);
 
   return rankingData.sort((a, b) => (a.totalRating < b.totalRating ? 1 : -1));
 }

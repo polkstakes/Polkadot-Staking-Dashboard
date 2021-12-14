@@ -144,7 +144,7 @@ export function ValidatorsDashboard() {
           </div>
         )}
         {selectedAccount && (
-          <Modal visible={showRewards} footer={null} onCancel={() => {
+          <Modal width={600} visible={showRewards} footer={null} onCancel={() => {
             setShowRewards(false);
             setSelectedAccount('')
           }}>
@@ -152,7 +152,7 @@ export function ValidatorsDashboard() {
           </Modal>
         )}
         {selectedAccount && (
-          <Modal visible={showCommission} footer={null} onCancel={() => {
+          <Modal width={600} visible={showCommission} footer={null} onCancel={() => {
             setShowCommission(false);
             setSelectedAccount('')
           }}>

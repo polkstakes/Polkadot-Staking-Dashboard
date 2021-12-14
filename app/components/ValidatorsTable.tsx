@@ -13,6 +13,8 @@ export const showRewardsChartAtom = atom<boolean>(false);
 
 const subTextStyles = css`
   color: #696969;
+  display: block;
+  margin-bottom: 100px;
 `;
 
 const toMDOT = (value: BigNumber) => {
@@ -186,7 +188,7 @@ export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
       columns={columns}
       dataSource={tableData}
     />
-    <span css={subTextStyles}>* Polkstakes ranking is based on last 1000 rewards. It's calculated based on previous era performance, commissions, payout, staking rewards, etc.</span>
+    <span css={subTextStyles}>* Polkstakes ranking is based on last 5000 staking rewards. It's calculated based on previous era performance, commissions, payout, staking rewards, etc.</span>
     </Fragment>
   );
 };
