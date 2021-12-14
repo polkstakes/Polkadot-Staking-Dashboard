@@ -1,12 +1,19 @@
+/** @jsx jsx */
 import { Table, Tag, Space } from "antd";
 import BigNumber from "bignumber.js";
 import { RankingData } from "~/data/types";
 import { LineChartOutlined } from "@ant-design/icons";
 import { atom, useAtom } from "jotai";
+import { css, jsx } from "@emotion/react";
+import { Fragment } from "react";
 
 export const selectedAccountIdAtom = atom<string>("");
 export const showCommissionChartAtom = atom<boolean>(false);
 export const showRewardsChartAtom = atom<boolean>(false);
+
+const subTextStyles = css`
+  color: #696969;
+`;
 
 const toMDOT = (value: BigNumber) => {
   return `${new BigNumber(value)
@@ -172,11 +179,14 @@ export const ValidatorsTable: React.FC<ValidatorsTableProps> = ({
   });
 
   return (
+    <Fragment>
     <Table
       tableLayout="fixed"
       loading={loading}
       columns={columns}
       dataSource={tableData}
     />
+    <span css={subTextStyles}>* Polkstakes ranking is based on last 1000 rewards. It's calculated based on previous era performance, commissions, payout, staking rewards, etc.</span>
+    </Fragment>
   );
 };
