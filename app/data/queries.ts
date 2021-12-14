@@ -132,11 +132,11 @@ export const GetReferendums = gql`
 `;
 
 export const GetStakingRewards = gql`
-  query GetStakingRewards($after: Cursor) {
-    stakingRewards(first: 100, after: $after) {
+  query GetStakingRewards($before: Cursor) {
+    stakingRewards(last: 100, before: $before) {
       pageInfo {
-        hasNextPage
-        endCursor
+        hasPreviousPage
+        startCursor
       }
       nodes {
         id

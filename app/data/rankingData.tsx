@@ -56,6 +56,28 @@ export async function fetchAll(query: RequestDocument, key: string) {
   return data;
 }
 
+export async function fetchEnd(query: RequestDocument, key: string) {
+  const subquery = new GraphQLClient(
+    "https://api.subquery.network/sq/ashikmeerankutty/staking-subquery"
+  );
+  let hasPrev = true;
+  let data: unknown[] = [];
+  let cursor = "";
+  let pageCount = 0;
+  while (hasPrev && pageCount < 50) {
+    pageCount += 1;
+    const gqlData = await subquery.request(query, {
+      before: cursor,
+    });
+    if (gqlData[key]) {
+      data = [...data, ...gqlData[key].nodes];
+    }
+    hasPrev = gqlData[key].pageInfo.hasPreviousPage;
+    cursor = gqlData[key].pageInfo.startCursor;
+  }
+  return data;
+}
+
 export enum Status {
   INITIALIZING = "INITIALIZING",
   FETCHING_VALIDATORS = "FETCHING_VALIDATORS",
@@ -113,7 +135,7 @@ export async function getRankingData(
   setStatus(Status.FETCHING_ERA_POINTS)
   const eraPoints = await fetchAll(GetEraPoints, "eraPoints");
   setStatus(Status.FETCHING_STAKING_REWARDS)
-  const stakingRewards = await fetchAll(GetStakingRewards, "stakingRewards");
+  const stakingRewards = await fetchEnd(GetStakingRewards, "stakingRewards");
 
   const stakingRewardsMap: Record<string, { balance: number; date: string }[]> =
     stakingRewards.reduce(
