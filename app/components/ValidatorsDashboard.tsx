@@ -148,7 +148,7 @@ export function ValidatorsDashboard() {
             setShowRewards(false);
             setSelectedAccount('')
           }}>
-            <RewardsGraph rewarded={selectedAccountInfo.rewarded} />
+            <RewardsGraph rewarded={selectedAccountInfo.rewarded || []} />
           </Modal>
         )}
         {selectedAccount && (
@@ -156,7 +156,7 @@ export function ValidatorsDashboard() {
             setShowCommission(false);
             setSelectedAccount('')
           }}>
-            <CommissionsGraph commisionHistory={selectedAccountInfo.commissionHistory} />
+            <CommissionsGraph commisionHistory={selectedAccountInfo.commissionHistory || []} />
           </Modal>
         )}
         <div>
