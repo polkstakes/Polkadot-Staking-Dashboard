@@ -30,3 +30,15 @@ Then run the app in production mode:
 ```sh
 npm start
 ```
+
+## Screenshots
+
+![image](./screenshots/1.png)
+
+![image](./screenshots/2.png)
+
+![image](./screenshots/3.png)
+
+![image](./screenshots/4.png)
+
+![image](./screenshots/5.png)
