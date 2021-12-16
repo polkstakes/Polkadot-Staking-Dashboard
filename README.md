@@ -6,6 +6,8 @@ PolkStakes ranking is a new standard for rating Polkadot Validators. This rankin
 
 All the data is indexed using subquery and is fetched from the subquery project deployed at [here](https://explorer.subquery.network/subquery/ashikmeerankutty/polkstakes)
 
+The ranking is based on last 5000 staking rewards
+
 ## Development
 
 From your terminal:
@@ -33,12 +35,22 @@ npm start
 
 ## Screenshots
 
+Loading Data
+
 ![image](./screenshots/1.png)
+
+Ranked validators
 
 ![image](./screenshots/2.png)
 
+Commissions History
+
 ![image](./screenshots/3.png)
 
+Staking Rewards History
+
 ![image](./screenshots/4.png)
+
+Sorting based on average staking rewards
 
 ![image](./screenshots/5.png)

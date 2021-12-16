@@ -43,7 +43,7 @@ import { toDOT } from "./ValidatorsTable";
       labels,
       datasets: [
         {
-          label: "Stash Rewards (DOT)",
+          label: "Staking Rewards (DOT)",
           data: rewarded.map((reward) => reward.balance / 10000000000),
           borderColor: "rgb(255, 99, 132)",
           backgroundColor: "rgba(255, 99, 132, 0.5)",
